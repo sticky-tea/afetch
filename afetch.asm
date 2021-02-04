@@ -132,6 +132,7 @@ main:
 	jz os ; if child
 	jmp main_s
 os:
+	call resetColor
 	mov ecx, tux_part1
 	mov edx, 10
 	call print
