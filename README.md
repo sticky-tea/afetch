@@ -9,3 +9,11 @@ A command-line system information tool written in x86 assembly language
 ```bash
 $ make && sudo make install
 ```
+or
+```bash
+$ fasm afetch.asm && ./afetch
+```
+Maybe you will need to do
+```bash
+$ chmod +x afetch
+```
