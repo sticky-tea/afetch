@@ -30,6 +30,8 @@ hstnm_len equ 12
 user_len equ 7
 uptime_len equ 8
 uname_len equ 9
+art_len equ 53
+artn_len equ 54
 
 ; ------ SYSCALLS ------
 
@@ -134,13 +136,20 @@ printUname:
 	int SYSCALL
 ret
 
+printColorTest:
+	mov ecx, colortest
+	mov edx, 65
+	call print
+	call resetColor
+ret
+
 ; ------ COLORS ------
 
 resetColor:
 	mov eax, SYSCALL_WRITE
 	mov ebx, CONSOLE_DESC
-	mov ecx, rescolor
-	mov edx, 8
+	mov ecx, rescolor1
+	mov edx, 7;8
 	int SYSCALL
 ret
 
@@ -160,11 +169,7 @@ main:
 os:
 	call resetColor
 	mov ecx, tux_part1
-	mov edx, 10
-	call print
-
-	mov ecx, tux_part2
-	mov edx, 10
+	mov edx, art_len
 	call print
 
 	call setBlueBoldColor
@@ -184,8 +189,8 @@ main_s:
 	jz phostname
 	jmp main_s1
 phostname:
-	mov ecx, tux_part3
-	mov edx, 10
+	mov ecx, tux_part2
+	mov edx, art_len
 	call print
 
 	call setBlueBoldColor
@@ -204,8 +209,8 @@ main_s1:
 	jz puser
 	jmp main_s2
 puser:
-	mov ecx, tux_part4
-	mov edx, 10
+	mov ecx, tux_part3
+	mov edx, art_len
 	call print
 
 	call setBlueBoldColor
@@ -224,8 +229,8 @@ main_s2:
 	jz puptime
 	jmp main_s3
 puptime:
-	mov ecx, tux_part5
-	mov edx, 10
+	mov ecx, tux_part4
+	mov edx, art_len
 	call print
 
 	call setBlueBoldColor
@@ -245,8 +250,8 @@ main_s3:
 	jmp main_s4
 
 puname:
-	mov ecx, tux_part6
-	mov edx, 10
+	mov ecx, tux_part5
+	mov edx, art_len
 	call print
 
 	call setBlueBoldColor
@@ -260,9 +265,14 @@ puname:
 main_s4:
 	call waitpid
 
-	mov ecx, tux_part7
-	mov edx, 10
+	mov ecx, tux_part6
+	mov edx, artn_len
 	call print
+
+	mov ecx, tux_part7
+	mov edx, art_len
+	call print
+	call printColorTest
 
 	call exit
 
@@ -276,11 +286,22 @@ progname db 'afetch', 0x00
 ; ESC = 0x1B
 ; [ = 0x5B
 ; 1 = 0x31
+; 4 = 0x34
 ; ; = 0x3B
 ; m = 0x6D
 
+rescolor1 db 0x1B, 0x5B, 0x30, 0x3B, 0x30, 0x6D, 0x00
 rescolor db 0x1B, 0x5B, 0x31, 0x3B, 0x33, 0x37, 0x6D, 0x00
 bluebold db 0x1B, 0x5B, 0x31, 0x3B, 0x33, 0x34, 0x6D, 0x00
+
+;\033[1;41m   \033[1;0m\033[1;42m   \033[1;0m\033[1;43m   \033[1;0m\033[1;44m   \033[1;0m\033[1;45m   \033[1;0m\033[1;46m   \033[1;0m\033[1;47m   \033[0;0m
+colortest db 0x1B, 0x5B, 0x31, 0x3B, 0x34, 0x31, 0x6D, '  ',\
+0x1B, 0x5B, 0x31, 0x3B, 0x34, 0x32, 0x6D, '  ',\
+0x1B, 0x5B, 0x31, 0x3B, 0x34, 0x33, 0x6D, '  ',\
+0x1B, 0x5B, 0x31, 0x3B, 0x34, 0x34, 0x6D, '  ',\
+0x1B, 0x5B, 0x31, 0x3B, 0x34, 0x35, 0x6D, '  ',\
+0x1B, 0x5B, 0x31, 0x3B, 0x34, 0x36, 0x6D, '  ',\
+0x1B, 0x5B, 0x31, 0x3B, 0x34, 0x37, 0x6D, '  ', 0x0A, 0x00
 
 osname db 'OS: ', 0x00
 shellname db 'Shell: ', 0x00
@@ -307,13 +328,13 @@ uname db '/bin/uname', 0x00
 uname_arg1 db '-r', 0x00
 uname_args dd progname, uname_arg1, 0x00
 
-tux_part1 db '  ,-.    ', 0x0A, 0x00
-tux_part2 db '  )"(    ', 0x00 
-tux_part3 db ' /.U.\   ', 0x00
-tux_part4 db '; ::; ;  ', 0x00
-tux_part5 db '( ::; )  ', 0x00 
-tux_part6 db " `.'.'   ", 0x00
-tux_part7 db ' mf`tm   ', 0x0A, 0x00
+tux_part1 db '░░░░░░░░░░░░░░░░░ ', 0x00
+tux_part2 db '░░░░░▀▄░░░▄▀░░░░░ ', 0x00 
+tux_part3 db '░░░░▄█▀███▀█▄░░░░ ', 0x00
+tux_part4 db '░░░█▀███████▀█░░░ ', 0x00
+tux_part5 db '░░░█░█▀▀▀▀▀█░█░░░ ', 0x00 
+tux_part6 db '░░░░░░▀▀░▀▀░░░░░░ ', 0x0A, 0x00
+tux_part7 db '░░░░░░░░░░░░░░░░░ ', 0x00
 
 undefined db 'undefined', 0x0A, 0x00
 
