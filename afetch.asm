@@ -84,6 +84,32 @@ printHostname:
 	int SYSCALL
 ret
 
+printHostnameFile:
+	mov eax, SYSCALL_OPEN
+	mov ebx, hostname_path
+	mov ecx, 0x00
+	mov edx, 0x00
+	int SYSCALL
+
+	push eax
+	push eax
+
+	mov eax, SYSCALL_READ
+	pop ebx
+	mov ecx, buf
+	mov edx, 255
+	int SYSCALL
+
+	mov eax, SYSCALL_CLOSE
+	pop ebx
+	int SYSCALL
+
+	mov ecx, buf
+	mov edx, 255
+	call print
+ret
+
+
 printWhoami:
 	mov eax, SYSCALL_EXECVE
 	mov ebx, whoami
@@ -168,7 +194,7 @@ phostname:
 	call print
 	call resetColor
 
-	call printHostname
+	call printHostnameFile
 	call exit
 main_s1:
 	call waitpid
@@ -271,6 +297,7 @@ lsb_args dd progname, lsb_arg1, lsb_arg2, 0x00
 hstnm db 'Host name: ', 0x00
 hostname db '/bin/hostname', 0x00
 hostname_args dd progname, 0x00
+hostname_path db '/etc/hostname', 0x00
 
 user db 'User: ', 0x00
 whoami db '/bin/whoami', 0x00
@@ -293,3 +320,5 @@ tux_part4 db '; ::; ;  ', 0x00
 tux_part5 db '( ::; )  ', 0x00 
 tux_part6 db " `.'.'   ", 0x00
 tux_part7 db ' mf`tm   ', 0x0A, 0x00
+
+buf db 255 dup(0)
