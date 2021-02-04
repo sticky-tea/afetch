@@ -1,5 +1,5 @@
 # afetch
-![afetch](https://i.imgur.com/d2E2zRc.png)  
+![afetch](https://i.imgur.com/9bHOhsM.png)  
 A command-line system information tool written in x86 assembly language
 ## How to install
 ### Required dependencies
