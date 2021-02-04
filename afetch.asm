@@ -74,14 +74,10 @@ printOSname:
 	mov ecx, lsb_args
 	xor edx, edx
 	int SYSCALL
-ret
 
-printHostname:
-	mov eax, SYSCALL_EXECVE
-	mov ebx, hostname
-	mov ecx, hostname_args
-	xor edx, edx
-	int SYSCALL
+	mov ecx, undefined
+	mov edx, 11
+	call print
 ret
 
 printHostnameFile:
@@ -290,17 +286,11 @@ lsb_arg1 db '-s', 0x00
 lsb_arg2 db '-d', 0x00
 lsb_args dd progname, lsb_arg1, lsb_arg2, 0x00
 
-;sh db '/bin/echo', 0x00
-;sh_arg1 db '$SHELL', 0x00
-;sh_args dd progname, sh_arg1, 0x00
-
 hstnm db 'Host name: ', 0x00
-hostname db '/bin/hostname', 0x00
-hostname_args dd progname, 0x00
 hostname_path db '/etc/hostname', 0x00
 
 user db 'User: ', 0x00
-whoami db '/bin/whoami', 0x00
+whoami db '/usr/bin/whoami', 0x00
 whoami_args dd progname, 0x00
 
 uptime_str db 'Uptime: ', 0x00
@@ -320,5 +310,7 @@ tux_part4 db '; ::; ;  ', 0x00
 tux_part5 db '( ::; )  ', 0x00 
 tux_part6 db " `.'.'   ", 0x00
 tux_part7 db ' mf`tm   ', 0x0A, 0x00
+
+undefined db 'undefined', 0x0A, 0x00
 
 buf db 255 dup(0)
