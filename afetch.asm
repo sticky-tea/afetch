@@ -120,6 +120,10 @@ printUptime:
 	mov ecx, uptime_args
 	xor edx, edx
 	int SYSCALL
+
+	mov ecx, undefined
+	mov edx, 11
+	call print
 ret
 
 printUname:
