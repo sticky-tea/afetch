@@ -285,7 +285,7 @@ bluebold db 0x1B, 0x5B, 0x31, 0x3B, 0x33, 0x34, 0x6D, 0x00
 osname db 'OS: ', 0x00
 shellname db 'Shell: ', 0x00
 
-lsb_release db '/bin/lsb_release', 0x00
+lsb_release db '/usr/bin/lsb_release', 0x00
 lsb_arg1 db '-s', 0x00
 lsb_arg2 db '-d', 0x00
 lsb_args dd progname, lsb_arg1, lsb_arg2, 0x00
