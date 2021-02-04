@@ -32,6 +32,7 @@ uptime_len equ 8
 uname_len equ 9
 art_len equ 53
 artn_len equ 54
+buf_size equ 127
 
 ; ------ SYSCALLS ------
 
@@ -56,7 +57,7 @@ ret
 ; ret value: eax - PID
 fork:
 	mov eax, SYSCALL_FORK
-	int 0x80
+	int SYSCALL
 ret
 
 ; waitpid
@@ -65,7 +66,7 @@ waitpid:
 	mov ebx, -1
 	mov ecx, 0
 	mov edx, 0
-	int 0x80
+	int SYSCALL
 ret
 
 ; ------ GET STATS ------
@@ -77,8 +78,8 @@ printOSname:
 	xor edx, edx
 	int SYSCALL
 
-	mov ecx, undefined
-	mov edx, 11
+	mov ecx, undefined ; On success, execve() does not return,
+	mov edx, 11		   ; on error -1 is returned 
 	call print
 ret
 
@@ -95,7 +96,7 @@ printHostnameFile:
 	mov eax, SYSCALL_READ
 	pop ebx
 	mov ecx, buf
-	mov edx, 255
+	mov edx, buf_size
 	int SYSCALL
 
 	mov eax, SYSCALL_CLOSE
@@ -103,7 +104,7 @@ printHostnameFile:
 	int SYSCALL
 
 	mov ecx, buf
-	mov edx, 255
+	mov edx, buf_size
 	call print
 ret
 
@@ -304,7 +305,6 @@ colortest db 0x1B, 0x5B, 0x31, 0x3B, 0x34, 0x31, 0x6D, '  ',\
 0x1B, 0x5B, 0x31, 0x3B, 0x34, 0x37, 0x6D, '  ', 0x0A, 0x00
 
 osname db 'OS: ', 0x00
-shellname db 'Shell: ', 0x00
 
 lsb_release db '/usr/bin/lsb_release', 0x00
 lsb_arg1 db '-s', 0x00
@@ -338,4 +338,4 @@ tux_part7 db '░░░░░░░░░░░░░░░░░ ', 0x00
 
 undefined db 'undefined', 0x0A, 0x00
 
-buf db 255 dup(0)
+buf db buf_size dup(0)
