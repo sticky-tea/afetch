@@ -415,6 +415,7 @@ main_s1:
 	call print
 
 	call printColorTest
+	call resetColor
 
 call exit
 
