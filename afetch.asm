@@ -154,7 +154,7 @@ ret
 printColorTest:
 	mov ecx, colortest
 	mov edx, 65
-	call println
+	call print
 	call resetColor
 ret
 
