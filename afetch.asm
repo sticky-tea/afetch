@@ -20,6 +20,9 @@ SYSCALL_OPEN equ 5
 SYSCALL_CLOSE equ 6
 SYSCALL_WAITPID equ 7
 SYSCALL_EXECVE equ 11
+SYSCALL_GETUID equ 24
+SYSCALL_SYSINFO equ 116
+SYSCALL_NEWUNAME equ 122
 
 CONSOLE_DESC equ 1
 
@@ -33,6 +36,13 @@ uname_len equ 9
 art_len equ 53
 artn_len equ 54
 buf_size equ 127
+sysuname_len equ 65
+
+debug:
+	mov ecx, undefined
+	mov edx, 10
+	call print
+ret
 
 ; ------ SYSCALLS ------
 
@@ -53,6 +63,13 @@ print:
 	int SYSCALL
 ret
 
+println:
+	call print
+	mov ecx, ln
+	mov edx, 2
+	call print
+ret
+
 ; fork
 ; ret value: eax - PID
 fork:
@@ -69,6 +86,32 @@ waitpid:
 	int SYSCALL
 ret
 
+newuname:
+	mov eax, SYSCALL_NEWUNAME
+	mov ebx, uname_sysname
+	xor ecx, ecx
+	xor edx, edx
+	int SYSCALL
+ret
+
+sysinfo:
+	mov eax, SYSCALL_SYSINFO
+	mov ebx, s_sysinfo
+	xor ecx, ecx
+	xor edx, edx
+	int SYSCALL
+ret	
+
+getuid:
+	mov eax, SYSCALL_GETUID
+	xor ebx, ebx
+	xor ecx, ecx
+	xor edx, edx	
+	int SYSCALL
+
+	mov [uid], eax
+ret
+
 ; ------ GET STATS ------
 
 printOSname:
@@ -83,59 +126,30 @@ printOSname:
 	call print
 ret
 
-printHostnameFile:
-	mov eax, SYSCALL_OPEN
-	mov ebx, hostname_path
-	mov ecx, 0x00
-	mov edx, 0x00
-	int SYSCALL
-
-	push eax
-	push eax
-
-	mov eax, SYSCALL_READ
-	pop ebx
-	mov ecx, buf
-	mov edx, buf_size
-	int SYSCALL
-
-	mov eax, SYSCALL_CLOSE
-	pop ebx
-	int SYSCALL
-
-	mov ecx, buf
-	mov edx, buf_size
-	call print
-ret
-
-
-printWhoami:
-	mov eax, SYSCALL_EXECVE
-	mov ebx, whoami
-	mov ecx, whoami_args
-	xor edx, edx
-	int SYSCALL
+printHostname:
+	mov ecx, uname_nodename
+	mov edx, 65
+	call println
 ret
 
 printUptime:
-	mov eax, SYSCALL_EXECVE
-	mov ebx, uptime
-	mov ecx, uptime_args
-	xor edx, edx
-	int SYSCALL
+	call uptimeToMin
+	mov eax, [uptime]
+	mov edi, uptimetostr
 
-	mov ecx, undefined
-	mov edx, 11
+	call int2str
+	mov ecx, uptimetostr
+	mov edx, 255
 	call print
 ret
 
 printUname:
-	mov eax, SYSCALL_EXECVE
-	mov ebx, uname
-	mov ecx, uname_args
-	xor edx, edx
-	int SYSCALL
+	mov ecx, uname_release
+	mov edx, 65
+	call println
 ret
+
+; ------ COLORS ------
 
 printColorTest:
 	mov ecx, colortest
@@ -144,13 +158,11 @@ printColorTest:
 	call resetColor
 ret
 
-; ------ COLORS ------
-
 resetColor:
 	mov eax, SYSCALL_WRITE
 	mov ebx, CONSOLE_DESC
-	mov ecx, rescolor1
-	mov edx, 7;8
+	mov ecx, rescolor
+	mov edx, 7
 	int SYSCALL
 ret
 
@@ -162,17 +174,169 @@ setBlueBoldColor:
 	int SYSCALL
 ret
 
+
+; ------ FUNC ------
+
+int2str:
+    ; EAX = value 
+    ; EDI = buffer 
+    mov     ecx,10
+.stack_dec: 
+    xor     edx,edx 
+    div     ecx 
+    add     edx,'0' 
+    push    edx 
+    test    eax,eax 
+    jz      .purge_dec 
+    call    .stack_dec 
+.purge_dec: 
+    pop     dword[edi] 
+    inc     edi 
+ret  
+
+uptimeToMin:
+	mov eax, [uptime]
+	cdq
+	mov ebx, 60
+	idiv ebx
+	mov [uptime], eax
+ret
+
+resetName:
+	mov edi, name
+	mov ecx, 0
+lp:
+	mov [edi], byte 0x00
+	inc edi
+	inc ecx
+
+	cmp ecx, 50
+	jne lp
+ret
+
+; oh.....
+getpwuid:
+	mov eax, SYSCALL_OPEN
+	mov ebx, passwd
+	mov ecx, 0x00
+	mov edx, 0x00
+	int SYSCALL
+
+	mov [fd], eax
+
+	mov ebx, [fd]
+.getname:
+	call resetName
+	mov edi, name
+.getsym:
+	mov eax, SYSCALL_READ
+	mov ebx, [fd]
+	mov ecx, curch
+	mov edx, 1
+	int SYSCALL
+
+	cmp [curch], ':'
+	je .getx	
+
+	mov al, [curch]
+	mov [edi], eax
+	inc edi
+
+	jmp .getsym
+.getx:
+	mov eax, SYSCALL_READ
+	mov ebx, [fd]
+	mov ecx, curch
+	mov edx, 1
+	int SYSCALL
+
+	cmp [curch], ':'
+	je .getid
+
+	jmp .getx	
+.getid:
+	mov edi, curuid
+.getid1:
+	mov eax, SYSCALL_READ
+	mov ebx, [fd]
+	mov ecx, curch
+	mov edx, 1
+	int SYSCALL
+
+	cmp [curch], ':'
+	je .checkuid	
+
+	mov al, [curch]
+	mov [edi], eax
+	inc edi
+
+	jmp .getid1
+
+.checkuid:
+	mov eax, [uid]
+	mov edi, uid_s
+	call int2str
+
+	; strcmp(uid_s, curuid)
+
+	mov edi, uid_s
+	mov esi, curuid
+.checksym:
+	mov eax, [edi]
+	cmp eax, [esi]
+	jne .readline
+
+	inc edi
+	inc esi
+
+	cmp [edi], byte 0
+	je .ifeq
+
+	jmp .checksym
+
+	je .close
+.ifeq:
+	cmp [esi], byte 0
+	je .close
+
+	jmp .getname
+
+.readline:
+	mov eax, SYSCALL_READ
+	mov ebx, [fd]
+	mov ecx, curch
+	mov edx, 1
+	int SYSCALL
+
+	cmp eax, 0x00
+	je .close
+
+	cmp [curch], 0x0A
+	je .getname
+	jmp .readline
+
+.close:
+	mov eax, SYSCALL_CLOSE
+	mov ebx, [fd]
+	int SYSCALL
+ret
+
+; ------ MAIN ------
+
 main:
+	call newuname
+	call sysinfo
+	call getuid
+
 	call fork
 	test eax, eax
-	jz os ; if child
-	jmp main_s
+	jz os
+	jmp main_s1
 os:
-	call resetColor
 	mov ecx, tux_part1
 	mov edx, art_len
 	call print
-
+	; OS
 	call setBlueBoldColor
 	mov ecx, osname
 	mov edx, osname_len
@@ -181,35 +345,23 @@ os:
 
 	call printOSname
 	call exit
-main_s:
+main_s1:
 	call waitpid
-	call resetColor
 
-	call fork
-	test eax, eax
-	jz phostname
-	jmp main_s1
-phostname:
 	mov ecx, tux_part2
 	mov edx, art_len
 	call print
 
+	; hostname
 	call setBlueBoldColor
 	mov ecx, hstnm
 	mov edx, hstnm_len
 	call print
 	call resetColor
 
-	call printHostnameFile
-	call exit
-main_s1:
-	call waitpid
+	call printHostname
 
-	call fork
-	test eax, eax
-	jz puser
-	jmp main_s2
-puser:
+	; user
 	mov ecx, tux_part3
 	mov edx, art_len
 	call print
@@ -220,16 +372,12 @@ puser:
 	call print
 	call resetColor
 
-	call printWhoami
-	call exit
-main_s2:
-	call waitpid
+	call getpwuid
+	mov ecx, name
+	mov edx, 50
+	call println
 
-	call fork
-	test eax, eax
-	jz puptime
-	jmp main_s3
-puptime:
+	; uptime
 	mov ecx, tux_part4
 	mov edx, art_len
 	call print
@@ -237,20 +385,15 @@ puptime:
 	call setBlueBoldColor
 	mov ecx, uptime_str
 	mov edx, uptime_len
-	call print
+	call print 
 	call resetColor
 
 	call printUptime
-	call exit
-main_s3:
-	call waitpid
+	mov ecx, mins
+	mov edx, 6
+	call println
 
-	call fork
-	test eax, eax
-	jz puname
-	jmp main_s4
-
-puname:
+	; kernel
 	mov ecx, tux_part5
 	mov edx, art_len
 	call print
@@ -258,24 +401,22 @@ puname:
 	call setBlueBoldColor
 	mov ecx, uname_str
 	mov edx, uname_len
-	call print
+	call print 
 	call resetColor
 
 	call printUname
-	call exit
-main_s4:
-	call waitpid
 
 	mov ecx, tux_part6
-	mov edx, artn_len
+	mov edx, art_len
 	call print
 
 	mov ecx, tux_part7
 	mov edx, art_len
 	call print
+
 	call printColorTest
 
-	call exit
+call exit
 
 
 segment readable writeable
@@ -291,8 +432,7 @@ progname db 'afetch', 0x00
 ; ; = 0x3B
 ; m = 0x6D
 
-rescolor1 db 0x1B, 0x5B, 0x30, 0x3B, 0x30, 0x6D, 0x00
-rescolor db 0x1B, 0x5B, 0x31, 0x3B, 0x33, 0x37, 0x6D, 0x00
+rescolor db 0x1B, 0x5B, 0x30, 0x3B, 0x30, 0x6D, 0x00
 bluebold db 0x1B, 0x5B, 0x31, 0x3B, 0x33, 0x34, 0x6D, 0x00
 
 ;\033[1;41m   \033[1;0m\033[1;42m   \033[1;0m\033[1;43m   \033[1;0m\033[1;44m   \033[1;0m\033[1;45m   \033[1;0m\033[1;46m   \033[1;0m\033[1;47m   \033[0;0m
@@ -313,20 +453,52 @@ lsb_args dd progname, lsb_arg1, lsb_arg2, 0x00
 
 hstnm db 'Host name: ', 0x00
 hostname_path db '/etc/hostname', 0x00
-
 user db 'User: ', 0x00
-whoami db '/usr/bin/whoami', 0x00
-whoami_args dd progname, 0x00
-
 uptime_str db 'Uptime: ', 0x00
-uptime db '/bin/uptime', 0x00
-uptime_arg1 db '-p', 0x00
-uptime_args dd progname, uptime_arg1, 0x00
-
 uname_str db 'Kernel: ', 0x00
-uname db '/bin/uname', 0x00
-uname_arg1 db '-r', 0x00
-uname_args dd progname, uname_arg1, 0x00
+mins db ' mins', 0x00
+ln db 0x0A, 0x00
+
+passwd db '/etc/passwd', 0x00
+curch db 0
+curuid db 20 dup(0)
+
+fd dd 0
+username db 50 dup(0)
+
+buf db buf_size dup(0)
+
+; struct new_utsname
+uname_sysname db 65 dup(0)
+uname_nodename db 65 dup(0)
+uname_release db 65 dup(0)
+uname_version db 65 dup(0)
+uname_machine db 65 dup(0)
+uname_domainname db 65 dup(0)
+
+; struct sysinfo
+s_sysinfo:
+	uptime 	  dd 0
+	loads 	  dd 3 dup(0)
+	totalram  dd 0
+	freeram   dd 0
+	sharedram dd 0
+	bufferram dd 0
+	totalswap dd 0
+	freeeswap dd 0
+	proc 	  dw 0
+	_f		  db 22 dup(0)
+
+s_passwd:
+	name db 50 dup(0)
+
+name_len db 50
+
+uid dd 0
+uid_s db 20 dup(0)
+
+uptimetostr db 255 dup(0)
+undefined db 'undefined', 0x0A, 0x00
 
 tux_part1 db '░░░░░░░░░░░░░░░░░ ', 0x00
 tux_part2 db '░░░░░▀▄░░░▄▀░░░░░ ', 0x00 
@@ -335,7 +507,3 @@ tux_part4 db '░░░█▀███████▀█░░░ ', 0x00
 tux_part5 db '░░░█░█▀▀▀▀▀█░█░░░ ', 0x00 
 tux_part6 db '░░░░░░▀▀░▀▀░░░░░░ ', 0x0A, 0x00
 tux_part7 db '░░░░░░░░░░░░░░░░░ ', 0x00
-
-undefined db 'undefined', 0x0A, 0x00
-
-buf db buf_size dup(0)
